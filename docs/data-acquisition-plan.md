@@ -50,6 +50,23 @@ The WhatsApp thread asked two questions the CitizenRIMS map **structurally canno
 - [FBI Crime Data Explorer](https://cde.ucr.cjis.gov/) — agency-level UCR/NIBRS for Alameda, Berkeley, San Leandro, Oakland, Lafayette, Piedmont, Albany. Bulk CSV plus a REST API at `https://api.usa.gov/crime/fbi/sapi` (free key from https://api.data.gov/signup/).
 - Caveat to surface in the UI: UCR submission is voluntary and the NIBRS transition broke comparability for some agencies in some years. Don't silently paper over gaps.
 
+### Federal data is not a substitute for Alameda's
+
+Worth stating plainly, because it's a tempting shortcut: **FBI CDE cannot replace the APD data.** The gaps run both ways.
+
+| | APD (CitizenRIMS / CPRA) | FBI CDE (UCR / NIBRS) |
+|---|---|---|
+| Mappable location | Address / block / coordinates | **Location *type* only** (coded category, e.g. "Residence/Home"). No map is possible from federal data. |
+| Calls for service | Yes | **Not collected** |
+| Recency | Near-real-time (24h, active calls) | Monthly publication; agencies submit on an April 1 deadline for the prior year |
+| RIPA stop data | Yes | **No** — CA DOJ only |
+| Offense classification | APD internal codes — **not comparable across cities** | Standardized NIBRS/UCR — the whole point |
+| Victim/offender demographics, weapon, relationship | Limited / redacted | Richer (NIBRS segments) |
+| History | ~30-day public window | 1991–present |
+| Coverage guarantee | It's their own data | **Voluntary.** California cumulative NIBRS participation ≈ 48%, ~30 points below the national rate (up from <2% in 2021) |
+
+**Before promising a peer-comparison feature, verify per-agency, per-year submission coverage** for Alameda and every comparison city on the CDE agency pages. Most California agencies have a 2021–2022 hole from the NIBRS transition. A reporting gap rendered as a line going down is a fabricated crime drop — precisely the artifact this project exists to expose. Gaps render as gaps.
+
 **"DUIs are up, but is that just more traffic stops?"** — this is a **denominator problem**, and it's the sharpest insight in the thread. A count is meaningless without the enforcement volume behind it.
 - **RIPA stop data** (Racial and Identity Profiling Act) is exactly that denominator: every stop, with outcome. CitizenRIMS itself publishes RIPA stop data, and [CA DOJ OpenJustice](https://openjustice.doj.ca.gov/) publishes statewide downloads.
 - Shipping *DUI arrests per 1,000 traffic stops* alongside the raw count would, on its own, make our interface more useful than the source.
