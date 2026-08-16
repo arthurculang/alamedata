@@ -1,0 +1,591 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Alamedata</title>
+<style>
+:root{
+  color-scheme:light;
+  --page:#f9f9f7; --surface:#fcfcfb; --surface-2:#f0efec;
+  --ink:#0b0b0b; --ink-2:#52514e; --muted:#898781;
+  --grid:#e1e0d9; --baseline:#c3c2b7; --border:rgba(11,11,11,.10);
+  --accent:#2a78d6; --accent-soft:rgba(42,120,214,.10);
+  --map-land:#eceee9; --map-line:#dcded8;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --page:#0d0d0d; --surface:#1a1a19; --surface-2:#242422;
+    --ink:#ffffff; --ink-2:#c3c2b7; --muted:#898781;
+    --grid:#2c2c2a; --baseline:#383835; --border:rgba(255,255,255,.10);
+    --accent:#3987e5; --accent-soft:rgba(57,135,229,.14);
+    --map-land:#171b1e; --map-line:#232a2e;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --page:#0d0d0d; --surface:#1a1a19; --surface-2:#242422;
+  --ink:#ffffff; --ink-2:#c3c2b7; --muted:#898781;
+  --grid:#2c2c2a; --baseline:#383835; --border:rgba(255,255,255,.10);
+  --accent:#3987e5; --accent-soft:rgba(57,135,229,.14);
+  --map-land:#171b1e; --map-line:#232a2e;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{
+  background:var(--page); color:var(--ink);
+  font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+.wrap{max-width:1180px;margin:0 auto;padding:0 20px 64px}
+a{color:var(--accent)}
+code,.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.92em}
+
+header.site{padding:30px 0 6px;display:flex;flex-wrap:wrap;align-items:baseline;gap:8px 18px}
+.wordmark{font-size:26px;font-weight:650;letter-spacing:-.02em}
+.wordmark .dot{color:var(--accent)}
+.prov{color:var(--muted);font-size:13px}
+
+.scope{
+  border:1px solid var(--border);border-left:3px solid var(--accent);
+  background:var(--surface);border-radius:6px;
+  padding:12px 16px;margin:14px 0 18px;font-size:14px;color:var(--ink-2);
+}
+.scope strong{color:var(--ink)}
+
+.filters{
+  position:sticky;top:0;z-index:40;
+  display:flex;flex-wrap:wrap;gap:10px;align-items:center;
+  background:var(--page);padding:10px 0;border-bottom:1px solid var(--grid);
+  margin-bottom:18px;
+}
+.filters label{font-size:12px;color:var(--muted);display:flex;flex-direction:column;gap:3px}
+.filters select,.filters button{
+  font:inherit;font-size:13.5px;color:var(--ink);
+  background:var(--surface);border:1px solid var(--border);border-radius:6px;
+  padding:6px 9px;max-width:230px;
+}
+.filters button{cursor:pointer;align-self:flex-end}
+.filters button:hover{background:var(--surface-2)}
+.filters .n{margin-left:auto;align-self:flex-end;font-size:13px;color:var(--ink-2)}
+.filters .n b{font-size:16px;color:var(--ink)}
+select:focus-visible,button:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;margin-bottom:14px}
+.tile{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:13px 16px}
+.tile .lbl{font-size:12.5px;color:var(--muted)}
+.tile .val{font-size:30px;font-weight:600;line-height:1.25}
+.tile .sub{font-size:12.5px;color:var(--ink-2)}
+
+.card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:16px 18px;margin-bottom:14px}
+.card h2{margin:0 0 2px;font-size:15.5px;font-weight:600}
+.card .note{margin:0 0 10px;font-size:12.5px;color:var(--muted)}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media (max-width:840px){.two{grid-template-columns:1fr}}
+
+#mapbox{position:relative;height:460px;border-radius:6px;overflow:hidden;background:var(--map-land)}
+#mapbox canvas{position:absolute;inset:0;display:block}
+.zoomctl{position:absolute;top:10px;left:10px;display:flex;flex-direction:column;gap:6px;z-index:5}
+.zoomctl button{
+  width:30px;height:30px;font-size:17px;line-height:1;cursor:pointer;
+  color:var(--ink);background:var(--surface);border:1px solid var(--border);border-radius:6px;
+}
+#attrib{position:absolute;right:6px;bottom:4px;font-size:11px;color:var(--ink-2);background:color-mix(in srgb,var(--surface) 75%,transparent);padding:1px 6px;border-radius:4px;z-index:5;display:none}
+
+.tooltip{
+  position:fixed;z-index:99;pointer-events:none;display:none;
+  background:var(--surface);border:1px solid var(--border);border-radius:6px;
+  box-shadow:0 4px 14px rgba(0,0,0,.18);
+  padding:8px 11px;font-size:13px;max-width:300px;
+}
+.tooltip .tv{font-weight:600;font-size:15px}
+.tooltip .tl{color:var(--ink-2);font-size:12.5px}
+
+svg text{font-family:inherit}
+.bar-row{cursor:pointer}
+.bar-row:hover .bar{filter:brightness(1.12)}
+.bar-row.dim .bar{fill:var(--baseline)}
+
+table.recs{border-collapse:collapse;width:100%;font-size:13.5px}
+table.recs th{
+  text-align:left;font-size:11.5px;letter-spacing:.04em;text-transform:uppercase;
+  color:var(--muted);font-weight:600;padding:7px 10px;border-bottom:1px solid var(--baseline);
+}
+table.recs td{padding:6px 10px;border-bottom:1px solid var(--grid);vertical-align:top}
+table.recs td.dt{white-space:nowrap;font-variant-numeric:tabular-nums;color:var(--ink-2)}
+.pager{display:flex;gap:10px;align-items:center;margin-top:10px;font-size:13px;color:var(--ink-2)}
+.pager button{font:inherit;padding:4px 12px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--ink);cursor:pointer}
+.pager button:disabled{opacity:.4;cursor:default}
+
+.method{font-size:13.5px;color:var(--ink-2)}
+.method li{margin-bottom:5px}
+footer.site{margin-top:26px;font-size:12.5px;color:var(--muted);line-height:1.6}
+.empty{padding:34px 0;text-align:center;color:var(--muted);font-size:14px}
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="site">
+  <div class="wordmark">alamedata<span class="dot">.</span></div>
+  <div class="prov" id="provline">Alameda County Sheriff's Office arrest records</div>
+</header>
+
+<div class="scope">
+  <strong>What this is — and isn't.</strong> Arrest records published by the
+  <strong>Alameda County Sheriff's Office</strong> (unincorporated communities such as
+  Castro Valley, Ashland, Cherryland and San Lorenzo, contract cities such as Dublin, plus
+  county facilities — jails, courts — inside other cities). It does <strong>not</strong> cover cities
+  with their own police departments: the <strong>City of Alameda (Alameda PD) is not in this
+  dataset</strong> beyond a handful of incidental records. An arrest is an allegation, not a
+  conviction. This is not an official record of any agency.
+</div>
+
+<div class="filters" id="filters">
+  <label>Date range
+    <select id="f-range"></select></label>
+  <label>Community
+    <select id="f-city"></select></label>
+  <label>Category
+    <select id="f-cat"></select></label>
+  <button id="f-reset" type="button">Reset</button>
+  <div class="n"><b id="n-count">–</b> arrests in view</div>
+</div>
+
+<div class="tiles" id="tiles"></div>
+
+<div class="card">
+  <h2>Where</h2>
+  <p class="note" id="map-note">Each dot is one arrest, placed at the block-level point in the source data. Hover a dot for details; drag to pan, scroll to zoom.</p>
+  <div id="mapbox">
+    <canvas id="basemap"></canvas><canvas id="dots"></canvas>
+    <div class="zoomctl"><button id="z-in" aria-label="Zoom in">+</button><button id="z-out" aria-label="Zoom out">−</button></div>
+    <div id="attrib">© OpenStreetMap contributors</div>
+  </div>
+</div>
+
+<div class="card">
+  <h2>Arrests per month</h2>
+  <p class="note">Hollow endpoints are partial months (the export begins Jun 28 2022 and ends Jan 24 2026) — read them as incomplete, not as declines.</p>
+  <div id="trend"></div>
+</div>
+
+<div class="two">
+  <div class="card">
+    <h2>By category</h2>
+    <p class="note">Top categories in the current view · click a bar to filter</p>
+    <div id="cats"></div>
+  </div>
+  <div class="card">
+    <h2>By community</h2>
+    <p class="note">As recorded by ACSO · click a bar to filter</p>
+    <div id="cities"></div>
+  </div>
+</div>
+
+<div class="card">
+  <h2>Records</h2>
+  <p class="note">Most recent first · the accessible twin of every chart above — the same filtered slice, row by row. Exact street addresses in the source are deliberately not shown; locations are block-level.</p>
+  <div id="recs"></div>
+  <div class="pager">
+    <button id="pg-prev" type="button">‹ Prev</button>
+    <span id="pg-info"></span>
+    <button id="pg-next" type="button">Next ›</button>
+  </div>
+</div>
+
+<div class="card method">
+  <h2 style="color:var(--ink)">Method &amp; provenance</h2>
+  <ul>
+    <li><b>Source:</b> <span class="mono">Crime_Reports_Jul2022_Present.geojson</span>, ACSO crime reports layer, downloaded from the <a href="https://data.acgov.org/">Alameda County Open Data Hub</a> on 2026-08-15. The verbatim file is committed in the repository (<span class="mono">data/source/</span>); every figure here derives from it.</li>
+    <li><b>Record grain:</b> one row per arrest charge; every source row carries an arrest ID (this is an <i>arrest</i> dataset, whatever the layer's name says). Exact-duplicate rows (same arrest, charge and timestamp) were removed — 2 in the current build.</li>
+    <li><b>Categories</b> are the NIBRS-style label the Sheriff's Office appends to each charge description; leading numeric codes are stripped for display. Rows tagged <span class="mono">LOCAL WARRANT</span> / <span class="mono">OUT WARRANT</span> are shown as “Warrant service”. About 2,000 rows carry no category at all — including ~1,300 with an <i>empty</i> charge description, shown by statute code only — and appear as “Uncategorized”. One statute assist is applied: dash-less <span class="mono">VC 23152/23153</span> rows (driving under the influence) are counted in the DUI category; no other recategorization is done.</li>
+    <li><b>Community names</b> are normalized for obvious truncations in the export (<span class="mono">OA</span> → Oakland, <span class="mono">CAS</span> → Castro Valley, <span class="mono">HA</span> → Hayward, <span class="mono">LI</span> → Livermore, <span class="mono">ALCO</span> → Alameda County). Note that arrests recorded in Oakland, San Leandro or Hayward are largely at county facilities or on the unincorporated fringe — they say nothing about those cities' own crime rates, which their own police departments report separately.</li>
+    <li><b>Privacy:</b> the source includes an exact street address per record; this site drops that field and shows the block-level location only, with coordinates rounded to ≈11 m. No names or booking photos appear anywhere in the source or here.</li>
+    <li><b>Timestamps</b> are shown as published (the export stamps them UTC; the county does not document the timezone). Monthly averages exclude the two partial months.</li>
+    <li><b>Honest gaps:</b> filters, tiles, charts and the table all render the same slice; empty means empty, and partial months are marked, never smoothed.</li>
+  </ul>
+</div>
+
+<footer class="site">
+  Built from public records as a civic project · not an official record of the Alameda County Sheriff's Office or any agency ·
+  arrests are allegations, not convictions · basemap © OpenStreetMap contributors (when tiles are reachable) ·
+  source code and method: <span class="mono">github.com/arthurculang/alamedata</span>
+</footer>
+
+</div>
+
+<div class="tooltip" id="tip" role="status"></div>
+
+<script src="arrests.data.js"></script>
+<script>
+"use strict";
+const D = ALAMEDATA;
+const MIN=60000;
+const fmtM=new Intl.DateTimeFormat("en-US",{month:"short",year:"numeric",timeZone:"UTC"});
+const fmtD=new Intl.DateTimeFormat("en-US",{year:"numeric",month:"short",day:"numeric",timeZone:"UTC"});
+const fmtDT=new Intl.DateTimeFormat("en-US",{year:"numeric",month:"short",day:"numeric",hour:"numeric",minute:"2-digit",timeZone:"UTC"});
+const nf=new Intl.NumberFormat("en-US");
+const T={t:0,lat:1,lon:2,city:3,cat:4,off:5,block:6};
+
+const rows=D.rows;
+const t0=rows[0][T.t]*MIN, t1=rows[rows.length-1][T.t]*MIN;
+const [pmFirst,pmLast]=D.meta.partialMonths;
+document.getElementById("provline").textContent=
+  `Alameda County Sheriff's Office arrest records · ${fmtD.format(t0)} – ${fmtD.format(t1)} · retrieved ${D.meta.retrieved}`;
+
+const monthKey=ms=>{const d=new Date(ms);return d.getUTCFullYear()+"-"+String(d.getUTCMonth()+1).padStart(2,"0")};
+
+// ---- filter state ----------------------------------------------------------
+const S={from:-Infinity,to:Infinity,city:-1,cat:-1};
+const els=id=>document.getElementById(id);
+const tip=els("tip");
+
+function showTip(html,x,y){ tip.replaceChildren(...html); tip.style.display="block";
+  const r=tip.getBoundingClientRect();
+  tip.style.left=Math.min(x+14,innerWidth-r.width-8)+"px";
+  tip.style.top=Math.max(6,Math.min(y+14,innerHeight-r.height-8))+"px"; }
+function hideTip(){tip.style.display="none"}
+function tipRows(pairs){ return pairs.map(([v,l,cls])=>{const d=document.createElement("div");d.className=cls;d.textContent=v===null?l:"";if(v!==null){const b=document.createElement("span");b.className="tv";b.textContent=v;d.append(b," ");const s=document.createElement("span");s.className="tl";s.textContent=l;d.append(s);}return d;}) }
+
+// date presets (relative to the dataset, not today — the export has an end date)
+const lastFullMonthEnd=Date.UTC(2026,0,1);  // Jan 2026 is partial
+const presets=[
+  ["All time",-Infinity,Infinity],
+  ["2025",Date.UTC(2025,0,1),Date.UTC(2026,0,1)],
+  ["2024",Date.UTC(2024,0,1),Date.UTC(2025,0,1)],
+  ["2023",Date.UTC(2023,0,1),Date.UTC(2024,0,1)],
+  ["Last 6 full months",Date.UTC(2025,6,1),lastFullMonthEnd],
+  ["Last 90 days of data",t1-90*864e5,Infinity],
+];
+const selRange=els("f-range");
+presets.forEach((p,i)=>selRange.append(new Option(p[0],i)));
+selRange.onchange=()=>{S.from=presets[selRange.value][1];S.to=presets[selRange.value][2];render()};
+
+function fillSelect(sel,names,counts,label){
+  const order=names.map((n,i)=>i).sort((a,b)=>counts[b]-counts[a]);
+  sel.replaceChildren(new Option(label,-1));
+  for(const i of order) if(counts[i]) sel.append(new Option(`${names[i]} (${nf.format(counts[i])})`,i));
+}
+const cityCounts=Array(D.cities.length).fill(0), catCounts=Array(D.cats.length).fill(0);
+for(const r of rows){cityCounts[r[T.city]]++;catCounts[r[T.cat]]++}
+fillSelect(els("f-city"),D.cities,cityCounts,"All communities");
+fillSelect(els("f-cat"),D.cats,catCounts,"All categories");
+els("f-city").onchange=e=>{S.city=+e.target.value;render()};
+els("f-cat").onchange=e=>{S.cat=+e.target.value;render()};
+els("f-reset").onclick=()=>{S.from=-Infinity;S.to=Infinity;S.city=-1;S.cat=-1;
+  selRange.value=0;els("f-city").value=-1;els("f-cat").value=-1;render()};
+
+function filtered(){
+  const out=[];
+  for(const r of rows){
+    const ms=r[T.t]*MIN;
+    if(ms<S.from||ms>=S.to)continue;
+    if(S.city>=0&&r[T.city]!==S.city)continue;
+    if(S.cat>=0&&r[T.cat]!==S.cat)continue;
+    out.push(r);
+  }
+  return out;
+}
+
+// ---- stat tiles ------------------------------------------------------------
+function renderTiles(F){
+  const byM={};
+  for(const r of F){const k=monthKey(r[T.t]*MIN);byM[k]=(byM[k]||0)+1}
+  const fullMonths=Object.keys(byM).filter(k=>k!==pmFirst&&k!==pmLast);
+  const avg=fullMonths.length?Math.round(fullMonths.reduce((s,k)=>s+byM[k],0)/fullMonths.length):null;
+  const dui=F.filter(r=>D.cats[r[T.cat]]==="Driving Under the Influence").length;
+  const warr=F.filter(r=>D.cats[r[T.cat]]==="Warrant service").length;
+  const tiles=[
+    ["Arrests in view",nf.format(F.length),F.length?`${fmtD.format(F[0][T.t]*MIN)} – ${fmtD.format(F[F.length-1][T.t]*MIN)}`:"no records match"],
+    ["Monthly average",avg===null?"–":nf.format(avg),`across ${fullMonths.length} full months`],
+    ["DUI arrests",nf.format(dui),F.length?`${(100*dui/F.length).toFixed(1)}% of view — a count, not a rate; see method`:""],
+    ["Warrant-service share",F.length?(100*warr/F.length).toFixed(0)+"%":"–","arrests on existing warrants"],
+  ];
+  els("tiles").replaceChildren(...tiles.map(([l,v,s])=>{
+    const d=document.createElement("div");d.className="tile";
+    const a=document.createElement("div");a.className="lbl";a.textContent=l;
+    const b=document.createElement("div");b.className="val";b.textContent=v;
+    const c=document.createElement("div");c.className="sub";c.textContent=s;
+    d.append(a,b,c);return d;}));
+  els("n-count").textContent=nf.format(F.length);
+}
+
+// ---- svg helpers -----------------------------------------------------------
+const NS="http://www.w3.org/2000/svg";
+function E(tag,attrs,parent){const e=document.createElementNS(NS,tag);
+  for(const k in attrs)e.setAttribute(k,attrs[k]);if(parent)parent.append(e);return e}
+
+// ---- trend chart -----------------------------------------------------------
+function renderTrend(F){
+  const box=els("trend");box.replaceChildren();
+  if(!F.length){box.innerHTML='<div class="empty">No arrests in this slice.</div>';return}
+  const byM=new Map();
+  for(const r of F){const k=monthKey(r[T.t]*MIN);byM.set(k,(byM.get(k)||0)+1)}
+  const keys=[...byM.keys()].sort();
+  const pts=keys.map(k=>({k,n:byM.get(k),partial:k===pmFirst||k===pmLast,
+    ms:Date.UTC(+k.slice(0,4),+k.slice(5)-1,15)}));
+  const W=Math.min(1120,box.clientWidth||1120),H=240,L=44,R=14,Tp=14,B=30;
+  const svg=E("svg",{viewBox:`0 0 ${W} ${H}`,width:"100%",height:H,role:"img","aria-label":"Arrests per month"},box);
+  const max=Math.max(...pts.map(p=>p.n)),yMax=Math.ceil(max/50)*50||10;
+  const x=i=>L+(pts.length===1?.5:(i/(pts.length-1)))*(W-L-R);
+  const y=n=>Tp+(1-n/yMax)*(H-Tp-B);
+  for(let g=0;g<=4;g++){const v=yMax*g/4;
+    E("line",{x1:L,x2:W-R,y1:y(v),y2:y(v),stroke:"var(--grid)","stroke-width":1},svg);
+    E("text",{x:L-7,y:y(v)+4,"text-anchor":"end","font-size":11,fill:"var(--muted)","font-variant-numeric":"tabular-nums"},svg).textContent=nf.format(v);}
+  const step=Math.ceil(pts.length/10);
+  pts.forEach((p,i)=>{if(i%step===0&&i<pts.length-2||i===pts.length-1)
+    E("text",{x:x(i),y:H-8,"text-anchor":i===pts.length-1?"end":i===0?"start":"middle",
+      "font-size":11,fill:"var(--muted)"},svg).textContent=fmtM.format(p.ms);});
+  const full=pts.map((p,i)=>({...p,i})).filter(p=>!p.partial);
+  if(full.length>1){
+    const line=full.map((p,j)=>(j?"L":"M")+x(p.i)+" "+y(p.n)).join("");
+    E("path",{d:line+`L${x(full[full.length-1].i)} ${y(0)}L${x(full[0].i)} ${y(0)}Z`,fill:"var(--accent)",opacity:.1},svg);
+    E("path",{d:line,fill:"none",stroke:"var(--accent)","stroke-width":2,"stroke-linejoin":"round","stroke-linecap":"round"},svg);
+  }
+  pts.forEach((p,i)=>{ if(p.partial)
+    E("circle",{cx:x(i),cy:y(p.n),r:4,fill:"var(--surface)",stroke:"var(--accent)","stroke-width":2},svg);});
+  const last=full[full.length-1];
+  if(last){E("circle",{cx:x(last.i),cy:y(last.n),r:4.5,fill:"var(--accent)",stroke:"var(--surface)","stroke-width":2},svg);
+    E("text",{x:x(last.i),y:y(last.n)-9,"text-anchor":"middle","font-size":12,"font-weight":600,fill:"var(--ink)"},svg).textContent=nf.format(last.n);}
+  const cross=E("line",{y1:Tp,y2:H-B,stroke:"var(--baseline)","stroke-width":1,visibility:"hidden"},svg);
+  const hit=E("rect",{x:L,y:0,width:W-L-R,height:H,fill:"transparent"},svg);
+  hit.addEventListener("pointermove",ev=>{
+    const r=svg.getBoundingClientRect(),px=(ev.clientX-r.left)*W/r.width;
+    let bi=0,bd=1e9;pts.forEach((p,i)=>{const d=Math.abs(x(i)-px);if(d<bd){bd=d;bi=i}});
+    cross.setAttribute("x1",x(bi));cross.setAttribute("x2",x(bi));cross.setAttribute("visibility","visible");
+    const p=pts[bi];
+    showTip(tipRows([[nf.format(p.n),"arrests"],[null,fmtM.format(p.ms)+(p.partial?" · partial month":""),"tl"]]),ev.clientX,ev.clientY);
+  });
+  hit.addEventListener("pointerleave",()=>{cross.setAttribute("visibility","hidden");hideTip()});
+}
+
+// ---- bar panels ------------------------------------------------------------
+function renderBars(el,names,idxKey,selected,onPick,F){
+  const box=els(el);box.replaceChildren();
+  if(!F.length){box.innerHTML='<div class="empty">No arrests in this slice.</div>';return}
+  const counts=new Map();
+  for(const r of F)counts.set(r[idxKey],(counts.get(r[idxKey])||0)+1);
+  let entries=[...counts.entries()].sort((a,b)=>b[1]-a[1]);
+  const top=entries.slice(0,10);
+  const other=entries.slice(10).reduce((s,e)=>s+e[1],0);
+  const items=top.map(([i,n])=>({label:names[i],n,idx:i}));
+  if(other)items.push({label:`Other (${entries.length-10} more)`,n:other,idx:null});
+  const W=Math.min(560,box.clientWidth||560),BAR=18,GAP=10,LBL=170,Tp=4;
+  const H=Tp+items.length*(BAR+GAP);
+  const svg=E("svg",{viewBox:`0 0 ${W} ${H}`,width:"100%",height:H,role:"img"},box);
+  const maxVal=Math.max(...items.map(i=>i.n));
+  const valReserve=14+8*nf.format(maxVal).length;   // widest value label + gap
+  const max=maxVal, plotW=W-LBL-valReserve;
+  items.forEach((it,j)=>{
+    const yy=Tp+j*(BAR+GAP);
+    const g=E("g",{class:"bar-row"+(selected>=0&&it.idx!==selected?" dim":""),tabindex:0,role:"button",
+      "aria-label":`${it.label}: ${nf.format(it.n)} arrests. ${it.idx===null?"":"Activate to filter."}`},svg);
+    const lbl=E("text",{x:LBL-8,y:yy+BAR-5,"text-anchor":"end","font-size":12.5,fill:"var(--ink-2)"},g);
+    lbl.textContent=it.label.length>24?it.label.slice(0,23)+"…":it.label;
+    const w=Math.max(2,it.n/max*plotW);
+    E("path",{class:"bar",d:`M${LBL} ${yy}h${Math.max(0,w-4)}a4 4 0 0 1 4 4v${BAR-8}a4 4 0 0 1-4 4h${-Math.max(0,w-4)}z`,
+      fill:it.idx!==null&&it.idx===selected?"var(--accent)":"var(--accent)"},g);
+    E("text",{x:LBL+w+7,y:yy+BAR-5,"font-size":12,"font-weight":600,fill:"var(--ink)","font-variant-numeric":"tabular-nums"},g).textContent=nf.format(it.n);
+    const act=()=>{if(it.idx!==null)onPick(selected===it.idx?-1:it.idx)};
+    g.addEventListener("click",act);
+    g.addEventListener("keydown",ev=>{if(ev.key==="Enter"||ev.key===" "){ev.preventDefault();act()}});
+    g.addEventListener("pointermove",ev=>showTip(tipRows([[nf.format(it.n),"arrests"],[null,it.label,"tl"]]),ev.clientX,ev.clientY));
+    g.addEventListener("pointerleave",hideTip);
+  });
+}
+
+// ---- map -------------------------------------------------------------------
+const map={z:11,cx:0,cy:0,tiles:new Map(),fails:0,oks:0,dead:false};
+(function initView(){
+  let mnx=1,mxx=0,mny=1,mxy=0;
+  for(const r of rows){const p=merc(r[T.lat],r[T.lon]);mnx=Math.min(mnx,p[0]);mxx=Math.max(mxx,p[0]);mny=Math.min(mny,p[1]);mxy=Math.max(mxy,p[1])}
+  map.cx=(mnx+mxx)/2;map.cy=(mny+mxy)/2;
+  const bb=els("mapbox").getBoundingClientRect();
+  const span=Math.max(mxx-mnx,(mxy-mny)*(bb.width||900)/460)*1.15;
+  map.z=Math.min(14,Math.floor(Math.log2((bb.width||900)/256/span)));
+})();
+function merc(lat,lon){const s=Math.sin(lat*Math.PI/180);
+  return [(lon+180)/360,.5-Math.log((1+s)/(1-s))/(4*Math.PI)]}
+function px(p,W,H){const sc=256*Math.pow(2,map.z);
+  return [(p[0]-map.cx)*sc+W/2,(p[1]-map.cy)*sc+H/2]}
+
+function drawBase(){
+  const cv=els("basemap"),bb=els("mapbox").getBoundingClientRect();
+  const dpr=devicePixelRatio||1;
+  cv.width=bb.width*dpr;cv.height=bb.height*dpr;
+  cv.style.width=bb.width+"px";cv.style.height=bb.height+"px";
+  const ctx=cv.getContext("2d");ctx.setTransform(dpr,0,0,dpr,0,0);
+  const css=getComputedStyle(document.documentElement);
+  ctx.fillStyle=css.getPropertyValue("--map-land");ctx.fillRect(0,0,bb.width,bb.height);
+  const z=Math.round(map.z),n=Math.pow(2,z),sc=256*Math.pow(2,map.z)/n;
+  const x0=Math.floor((map.cx-bb.width/2/(256*Math.pow(2,map.z)))*n),
+        x1=Math.floor((map.cx+bb.width/2/(256*Math.pow(2,map.z)))*n),
+        y0=Math.floor((map.cy-bb.height/2/(256*Math.pow(2,map.z)))*n),
+        y1=Math.floor((map.cy+bb.height/2/(256*Math.pow(2,map.z)))*n);
+  if(!map.dead){
+    for(let tx=x0;tx<=x1;tx++)for(let ty=y0;ty<=y1;ty++){
+      if(tx<0||ty<0||tx>=n||ty>=n)continue;
+      const key=z+"/"+tx+"/"+ty;let img=map.tiles.get(key);
+      if(!img){img=new Image();img.crossOrigin="anonymous";
+        img.onload=()=>{map.oks++;els("attrib").style.display="block";drawBase()};
+        img.onerror=()=>{if(++map.fails>6&&!map.oks){map.dead=true;map.redraw(map.lastF||[])}};
+        img.src=`https://tile.openstreetmap.org/${z}/${tx}/${ty}.png`;map.tiles.set(key,img)}
+      if(img.complete&&img.naturalWidth){
+        const p=px([tx/n,ty/n],bb.width,bb.height);
+        ctx.globalAlpha=.85;ctx.drawImage(img,p[0],p[1],sc+.6,sc+.6);ctx.globalAlpha=1;}
+    }
+  }
+  if(map.dead){ // offline fallback: graticule + data-derived community labels
+    ctx.strokeStyle=css.getPropertyValue("--map-line");ctx.lineWidth=1;
+    for(let lon=-123;lon<-121;lon+=.05){const a=px(merc(37,lon),bb.width,bb.height),b=px(merc(38.2,lon),bb.width,bb.height);
+      ctx.beginPath();ctx.moveTo(a[0],a[1]);ctx.lineTo(b[0],b[1]);ctx.stroke()}
+    for(let lat=37;lat<38.2;lat+=.05){const a=px(merc(lat,-123),bb.width,bb.height),b=px(merc(lat,-121),bb.width,bb.height);
+      ctx.beginPath();ctx.moveTo(a[0],a[1]);ctx.lineTo(b[0],b[1]);ctx.stroke()}
+    els("map-note").textContent="Map tiles unavailable in this viewer — dots are placed on a plain grid with community labels. Open the standalone site for a street basemap.";
+  }
+}
+function drawCityLabels(ctx,W,H,css){ // on the dots canvas, above the dots
+  if(!map.dead)return;
+  ctx.font="600 12px system-ui";ctx.textAlign="center";ctx.globalAlpha=1;
+  ctx.lineWidth=3;ctx.strokeStyle=css.getPropertyValue("--surface").trim();
+  ctx.fillStyle=css.getPropertyValue("--ink-2").trim();
+  const placed=[];
+  for(const [name,pt] of cityAnchors){
+    const p=px(pt,W,H);
+    if(p[0]<14||p[0]>W-14||p[1]<14||p[1]>H-14)continue;
+    if(placed.some(q=>Math.abs(q[0]-p[0])<70&&Math.abs(q[1]-p[1])<18))continue;
+    ctx.strokeText(name,p[0],p[1]);ctx.fillText(name,p[0],p[1]);
+    placed.push(p);
+  }
+}
+const cityAnchors=(()=>{const acc={};
+  for(const r of rows){const c=r[T.city];(acc[c]=acc[c]||[]).push(r)}
+  return Object.entries(acc).filter(([,v])=>v.length>=40)
+    .sort((a,b)=>b[1].length-a[1].length)   // big communities win label collisions
+    .map(([ci,v])=>{
+    const lats=v.map(r=>r[T.lat]).sort((a,b)=>a-b),lons=v.map(r=>r[T.lon]).sort((a,b)=>a-b);
+    return [D.cities[ci],merc(lats[lats.length>>1],lons[lons.length>>1])]});})();
+
+let dotIndex=[];
+function drawDots(F){
+  const cv=els("dots"),bb=els("mapbox").getBoundingClientRect();
+  const dpr=devicePixelRatio||1;
+  cv.width=bb.width*dpr;cv.height=bb.height*dpr;
+  cv.style.width=bb.width+"px";cv.style.height=bb.height+"px";
+  const ctx=cv.getContext("2d");ctx.setTransform(dpr,0,0,dpr,0,0);
+  const css=getComputedStyle(document.documentElement);
+  const accent=css.getPropertyValue("--accent").trim();
+  dotIndex=new Map();
+  ctx.fillStyle=accent;ctx.globalAlpha=.5;
+  for(const r of F){
+    const p=px(merc(r[T.lat],r[T.lon]),bb.width,bb.height);
+    if(p[0]<-4||p[1]<-4||p[0]>bb.width+4||p[1]>bb.height+4)continue;
+    ctx.beginPath();ctx.arc(p[0],p[1],2.6,0,7);ctx.fill();
+    const k=(p[0]>>5)+":"+(p[1]>>5);
+    if(!dotIndex.has(k))dotIndex.set(k,[]);
+    dotIndex.get(k).push([p[0],p[1],r]);
+  }
+  ctx.globalAlpha=1;
+  drawCityLabels(ctx,bb.width,bb.height,css);
+}
+function nearestDot(mx,my){
+  let best=null,bd=14*14;
+  const gx=mx>>5,gy=my>>5;
+  for(let a=gx-1;a<=gx+1;a++)for(let b=gy-1;b<=gy+1;b++){
+    const cell=dotIndex.get(a+":"+b);if(!cell)continue;
+    for(const [x,y,r] of cell){const d=(x-mx)**2+(y-my)**2;if(d<bd){bd=d;best=[x,y,r]}}}
+  return best;
+}
+(function wireMap(){
+  const box=els("mapbox");let drag=null,lastF=[];
+  map.redraw=F=>{lastF=F;map.lastF=F;drawBase();drawDots(F)};
+  box.addEventListener("pointerdown",ev=>{drag=[ev.clientX,ev.clientY];box.setPointerCapture(ev.pointerId)});
+  box.addEventListener("pointerup",ev=>{drag=null;box.releasePointerCapture(ev.pointerId)});
+  box.addEventListener("pointermove",ev=>{
+    const bb=box.getBoundingClientRect(),mx=ev.clientX-bb.left,my=ev.clientY-bb.top;
+    if(drag){const sc=256*Math.pow(2,map.z);
+      map.cx-=(ev.clientX-drag[0])/sc;map.cy-=(ev.clientY-drag[1])/sc;
+      drag=[ev.clientX,ev.clientY];drawBase();drawDots(lastF);hideTip();return}
+    const hit=nearestDot(mx,my);
+    box.style.cursor=hit?"pointer":"grab";
+    if(hit){const r=hit[2];
+      showTip(tipRows([
+        [null,D.offs[r[T.off]],"tv"],
+        [null,(r[T.block]?r[T.block]+", ":"")+D.cities[r[T.city]],"tl"],
+        [null,fmtDT.format(r[T.t]*MIN)+" · "+D.cats[r[T.cat]],"tl"]]),ev.clientX,ev.clientY);
+      const ctx=els("dots").getContext("2d");drawDots(lastF);
+      const css=getComputedStyle(document.documentElement);
+      ctx.setTransform(devicePixelRatio||1,0,0,devicePixelRatio||1,0,0);
+      ctx.beginPath();ctx.arc(hit[0],hit[1],5,0,7);
+      ctx.fillStyle=css.getPropertyValue("--accent");ctx.fill();
+      ctx.lineWidth=2;ctx.strokeStyle=css.getPropertyValue("--surface");ctx.stroke();
+    } else hideTip();
+  });
+  box.addEventListener("pointerleave",hideTip);
+  box.addEventListener("wheel",ev=>{ev.preventDefault();
+    zoomAt(ev.deltaY<0?.5:-.5,ev)},{passive:false});
+  els("z-in").onclick=()=>zoomAt(1);els("z-out").onclick=()=>zoomAt(-1);
+  function zoomAt(dz,ev){
+    const bb=box.getBoundingClientRect();
+    if(ev){const sc0=256*Math.pow(2,map.z);
+      const wx=map.cx+(ev.clientX-bb.left-bb.width/2)/sc0,
+            wy=map.cy+(ev.clientY-bb.top-bb.height/2)/sc0;
+      map.z=Math.max(9,Math.min(17,map.z+dz));
+      const sc1=256*Math.pow(2,map.z);
+      map.cx=wx-(ev.clientX-bb.left-bb.width/2)/sc1;
+      map.cy=wy-(ev.clientY-bb.top-bb.height/2)/sc1;
+    } else map.z=Math.max(9,Math.min(17,map.z+dz));
+    drawBase();drawDots(lastF);
+  }
+  addEventListener("resize",()=>{drawBase();drawDots(lastF)});
+  matchMedia("(prefers-color-scheme: dark)").addEventListener("change",()=>{drawBase();drawDots(lastF)});
+})();
+
+// ---- records table ---------------------------------------------------------
+let page=0;const PAGE=100;let lastRecs=[];
+function renderRecs(F){
+  lastRecs=[...F].reverse();page=0;drawPage();
+}
+function drawPage(){
+  const box=els("recs");
+  if(!lastRecs.length){box.innerHTML='<div class="empty">No arrests in this slice.</div>';
+    els("pg-info").textContent="";els("pg-prev").disabled=els("pg-next").disabled=true;return}
+  const start=page*PAGE,slice=lastRecs.slice(start,start+PAGE);
+  const tbl=document.createElement("table");tbl.className="recs";
+  const thead=tbl.createTHead().insertRow();
+  for(const h of["Date","Block","Community","Charge","Category"]){
+    const th=document.createElement("th");th.textContent=h;thead.append(th)}
+  const tb=tbl.createTBody();
+  for(const r of slice){
+    const tr=tb.insertRow();
+    const c0=tr.insertCell();c0.className="dt";c0.textContent=fmtDT.format(r[T.t]*MIN);
+    tr.insertCell().textContent=r[T.block]||"—";
+    tr.insertCell().textContent=D.cities[r[T.city]];
+    const c3=tr.insertCell();c3.className="mono";c3.textContent=D.offs[r[T.off]];
+    tr.insertCell().textContent=D.cats[r[T.cat]];
+  }
+  box.replaceChildren(tbl);
+  els("pg-info").textContent=`${nf.format(start+1)}–${nf.format(Math.min(start+PAGE,lastRecs.length))} of ${nf.format(lastRecs.length)}`;
+  els("pg-prev").disabled=page===0;
+  els("pg-next").disabled=start+PAGE>=lastRecs.length;
+}
+els("pg-prev").onclick=()=>{page--;drawPage()};
+els("pg-next").onclick=()=>{page++;drawPage()};
+
+// ---- master render ---------------------------------------------------------
+function render(){
+  const F=filtered();
+  renderTiles(F);
+  renderTrend(F);
+  renderBars("cats",D.cats,T.cat,S.cat,i=>{S.cat=i;els("f-cat").value=i;render()},F);
+  renderBars("cities",D.cities,T.city,S.city,i=>{S.city=i;els("f-city").value=i;render()},F);
+  map.redraw(F);
+  renderRecs(F);
+}
+render();
+</script>
+</body>
+</html>
